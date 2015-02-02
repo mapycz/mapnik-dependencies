@@ -1,0 +1,12 @@
+diff --git a/win32/Makefile.msvc b/win32/Makefile.msvc
+index 54e8e23..23a02d2 100644
+--- a/win32/Makefile.msvc
++++ b/win32/Makefile.msvc
+@@ -71,7 +71,6 @@ CFLAGS = $(CFLAGS) /D "_DEBUG" /Od /Z7
+ LDFLAGS = $(LDFLAGS) /DEBUG
+ !else
+ CFLAGS = $(CFLAGS) /D "NDEBUG" /O2 
+-LDFLAGS = $(LDFLAGS) /OPT:NOWIN98
+ !endif
+ 
+ # Libxslt object files.
