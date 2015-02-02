@@ -8,20 +8,14 @@ IF "%ROOTDIR%"=="" ( echo "ROOTDIR variable not set" && GOTO DONE )
 
 
 cd %PKGDIR%
-if NOT EXIST libxslt-git-snapshot.tar.gz (
-	wget ftp://xmlsoft.org/libxml2/libxslt-git-snapshot.tar.gz
-)
-IF ERRORLEVEL 1 GOTO ERROR
 
 if EXIST libxslt (
-  echo found extracted sources
+  echo found sources
 )
 
 SETLOCAL ENABLEDELAYEDEXPANSION
 if NOT EXIST libxslt (
-  echo extracting
-  CALL bsdtar xfz libxslt-git-snapshot.tar.gz
-  rename libxslt-1.1.28 libxslt
+  git clone git://git.gnome.org/libxslt
   IF !ERRORLEVEL! NEQ 0 GOTO ERROR
   cd %PKGDIR%\libxslt\win32
   IF !ERRORLEVEL! NEQ 0 GOTO ERROR
