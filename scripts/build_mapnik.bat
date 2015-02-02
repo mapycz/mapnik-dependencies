@@ -2,14 +2,13 @@
 SETLOCAL
 SET EL=0
 echo ------ MAPNIK -----
-
 :: guard to make sure settings have been sourced
 IF "%ROOTDIR%"=="" ( echo "ROOTDIR variable not set" && GOTO DONE )
 
 cd %PKGDIR%
 if NOT EXIST mapnik-%MAPNIKBRANCH% (
-	ECHO cloning mapnik
-    git clone https://github.com/mapnik/mapnik mapnik-%MAPNIKBRANCH%
+    ECHO cloning mapnik
+    git clone git@github.com:mapycz/mapnik.git mapnik-%MAPNIKBRANCH%
     IF ERRORLEVEL 1 GOTO ERROR
 )
 cd mapnik-%MAPNIKBRANCH%
@@ -23,8 +22,8 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 
 if NOT EXIST mapnik-gyp (
-	ECHO cloning mapnik-gyp
-    git clone https://github.com/mapnik/mapnik-gyp mapnik-gyp
+    ECHO cloning mapnik-gyp
+    git clone git@github.com:mapycz/mapnik-gyp.git mapnik-gyp
     IF ERRORLEVEL 1 GOTO ERROR
 )
 
