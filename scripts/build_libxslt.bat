@@ -17,8 +17,10 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 if NOT EXIST libxslt (
   git clone git://git.gnome.org/libxslt
   IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-  cd %PKGDIR%\libxslt\win32
+  cd %PKGDIR%\libxslt
   IF !ERRORLEVEL! NEQ 0 GOTO ERROR
+  patch -N -p1 < %PATCHES%\libxslt.diff || %SKIP_FAILED_PATCH%
+  IF ERRORLEVEL 1 GOTO ERROR
 )
 ENDLOCAL
 
