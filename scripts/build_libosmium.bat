@@ -6,24 +6,48 @@ echo ------ libosmium -----
 IF "%ROOTDIR%"=="" ( echo "ROOTDIR variable not set" && GOTO ERROR )
 IF %TARGET_ARCH% EQU 32 ( echo "32bit not supported" && SET ERRORLEVEL=1 && GOTO ERROR )
 
+SET FULLBUILD=0
+SET USEDEVCONFIG=0
+SET USEMSVS=0
 
-SETLOCAL ENABLEDELAYEDEXPANSION
-IF "%1"=="full" (
-	echo ======== BUILDING AND PACKAGING ALL DEPS ================
-	cd %ROOTDIR%\scripts
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-	CALL build_libosmium_deps.bat
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-	CALL package_libosmium_deps.bat
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-)
-ENDLOCAL
+:NEXT-ARG
+IF "%1"=="" GOTO ARGS-DONE
+IF /i "%1"=="vs" SET USEMSVS=1 && GOTO ARG-OK
+IF /i "%1"=="full" SET FULLBUILD=1 && GOTO ARG-OK
+IF /i "%1"=="dev" SET USEDEVCONFIG=1 && GOTO ARG-OK
+
+ECHO. && ECHO ------------------------------
+ECHO Invalid argument "%1"
+ECHO ------------------------------ && ECHO.
+
+:ARG-OK
+SHIFT
+GOTO NEXT-ARG
+
+:ARGS-DONE
+
+ECHO FULLBUILD %FULLBUILD%
+ECHO USEDEVCONFIG %USEDEVCONFIG%
+ECHO USEMSVS %USEMSVS%
+
+IF %FULLBUILD% EQU 0 ECHO NOT building deps && GOTO DEPSBUILT
+
+echo ======== BUILDING AND PACKAGING ALL DEPS ================
+cd %ROOTDIR%\scripts
+IF !ERRORLEVEL! NEQ 0 GOTO ERROR
+CALL build_libosmium_deps.bat
+IF !ERRORLEVEL! NEQ 0 GOTO ERROR
+CALL package_libosmium_deps.bat
+IF !ERRORLEVEL! NEQ 0 GOTO ERROR
+
+:DEPSBUILT
 
 cd %PKGDIR%
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-if NOT EXIST libosmium (
-	git clone https://github.com/osmcode/libosmium.git
-)
+if NOT EXIST libosmium git clone https://github.com/osmcode/libosmium.git
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
 cd libosmium
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 git fetch
@@ -31,10 +55,7 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 git pull
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-if EXIST build (
-	ECHO deleting build dir
-	ddt /Q build
-)
+if EXIST build ddt /Q build
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 mkdir build
@@ -66,20 +87,21 @@ SET PATH=%LODEPSDIR%\zlib\lib;%PATH%
 SET LIBBZIP2=%LODEPSDIR%\bzip2\lib\libbz2.lib
 SET LIBBZIP2=%LIBBZIP2:\=/%
 
-REM -G "Visual Studio 14 Win64" ^
+REM -G "Visual Studio 14 2015 Win64" ^
 REM -G "NMake Makefiles" ^
 REM -DCMAKE_BUILD_TYPE=Dev ^
 REM -DCMAKE_BUILD_TYPE=Release ^
 
 SET PROJECT_TYPE="NMake Makefiles"
-IF "%1"=="vs" ( ECHO Visual Studio SLN && SET PROJECT_TYPE="Visual Studio 14 Win64" )
-SET CMAKEBUILDTYPE=Release
-IF "%2"=="dev" ( ECHO building Dev && SET CMAKEBUILDTYPE=Dev )
+IF %USEMSVS% EQU 1 ( ECHO Visual Studio SLN && SET PROJECT_TYPE="Visual Studio 14 Win64" )
+SET CMAKECONFIG=Release
+IF %USEDEVCONFIG% EQU 1 ( ECHO building Dev && SET CMAKECONFIG=Dev )
+
+REM -DCMAKE_BUILD_TYPE=%CMAKEBUILDTYPE% ^
 
 cmake .. ^
 -G %PROJECT_TYPE% ^
 -DOsmium_DEBUG=TRUE ^
--DCMAKE_BUILD_TYPE=%CMAKEBUILDTYPE% ^
 -DBOOST_ROOT=%LODEPSDIR%\boost ^
 -DBoost_PROGRAM_OPTIONS_LIBRARY=%LODEPSDIR%\boost\lib\libboost_program_options-vc140-mt-1_57.lib ^
 -DOSMPBF_LIBRARY=%LODEPSDIR%\osmpbf\lib\osmpbf.lib ^
@@ -104,12 +126,12 @@ cmake .. ^
 -DGETOPT_INCLUDE_DIR=%LODEPSDIR%\wingetopt\include
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-IF "%1"=="vs" GOTO USEMSBUILD
+IF %USEMSVS% EQU 1 GOTO USEMSBUILD
 
 nmake
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-CALL ctest -C Release -V -E testdata-multipolygon
+CALL ctest -C %CMAKECONFIG% -VV
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 GOTO DONE
@@ -120,16 +142,21 @@ GOTO DONE
 :: MinSizeRel
 :: Release
 :: RelWithDebInfo
+:: /verbosity q[uiet], m[inimal], n[ormal], d[etailed], and diag[nostic]
 msbuild libosmium.sln ^
 /nologo ^
+/verbosity:minimal ^
+/t:rebuild ^
 /m:%NUMBER_OF_PROCESSORS% ^
 /toolsversion:%TOOLS_VERSION% ^
 /p:BuildInParallel=true ^
-/p:Configuration=Release ^
+/p:Configuration=%CMAKECONFIG% ^
 /p:Platform=%BUILDPLATFORM% ^
 /p:PlatformToolset=%PLATFORM_TOOLSET%
 
-ECHO -----  TODO --- MAKE TESTS work with VS ------
+REM CALL ctest -C %CMAKECONFIG%
+CALL ctest --output-on-failure -C %CMAKECONFIG% -VV
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 GOTO DONE
 

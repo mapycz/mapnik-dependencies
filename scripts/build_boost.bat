@@ -91,16 +91,27 @@ IF %BUILD_TYPE% EQU Release (
 ECHO BOOST_BUILD_TYPE %BOOST_BUILD_TYPE%
 
 CALL b2 -j%NUMBER_OF_PROCESSORS% ^
-  -d2 %BOOST_BUILD_TYPE% stage ^
-  --build-type=minimal toolset=msvc-%TOOLS_VERSION% -q ^
-  runtime-link=shared link=static ^
-  address-model=%BOOSTADDRESSMODEL% ^
-  --with-thread --with-filesystem  ^
-  --with-date_time --with-system ^
-  --with-program_options --with-regex ^
-  --disable-filesystem2 ^
-  cxxflags="-DBOOST_MSVC_ENABLE_2014_JUN_CTP" ^
-  -sHAVE_ICU=1 -sICU_PATH=%PKGDIR%\\icu -sICU_LINK=%ICU_LINK%
+-d2 %BOOST_BUILD_TYPE% stage ^
+--build-type=minimal ^
+toolset=msvc-%TOOLS_VERSION% -q ^
+runtime-link=shared ^
+link=static ^
+address-model=%BOOSTADDRESSMODEL% ^
+--with-iostreams ^
+--with-test ^
+--with-thread ^
+--with-filesystem  ^
+--with-date_time ^
+--with-system ^
+--with-program_options ^
+--with-regex ^
+--disable-filesystem2 ^
+cxxflags="-DBOOST_MSVC_ENABLE_2014_JUN_CTP" ^
+-sHAVE_ICU=1 ^
+-sICU_PATH=%PKGDIR%\\icu ^
+-sICU_LINK=%ICU_LINK% ^
+-sZLIB_SOURCE=%PKGDIR%\zlib ^
+-sBUILD=boost_unit_test_framework
 
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
