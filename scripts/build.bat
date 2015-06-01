@@ -103,6 +103,9 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 CALL scripts\build_mapnik.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
+:: bail out here, till we have better flags than e.g. FULLBUILD in place
+GOTO DONE
+
 :NODE
 :: Skip NODE
 goto DONE
