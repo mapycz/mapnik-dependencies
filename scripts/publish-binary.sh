@@ -2,15 +2,9 @@
 cwd=$(pwd)
 set -e
 
-
-BUILD32BIT=""
-FASTBUILD="\$env:FASTBUILD=1"
-PACKAGEDEBUGSYMBOLS="\$env:PACKAGEDEBUGSYMBOLS=0"
-PUBLISH_SDK=0
-PUBLISH_NODEGDAL="\$env:PUBLISH_NODEGDAL=0"
 BUILD_CMD="wbs-build.ps1"
-STOP_COMPUTER="Stop-Computer"
 COMMIT_MESSAGE=$(git show -s --format=%B $TRAVIS_COMMIT | tr -d '\n')
+
 echo $COMMIT_MESSAGE
 if test "${COMMIT_MESSAGE#*'[publish binary]'}" != "$COMMIT_MESSAGE"
 then
@@ -18,36 +12,6 @@ then
     PUBLISH_SDK=1
 else
     echo "NOT publishing"
-fi
-if test "${COMMIT_MESSAGE#*'[publish debug]'}" != "$COMMIT_MESSAGE"
-then
-    echo "Commit includes [publish debug] skipping stack teardown."
-    BUILD_CMD="wbs-build-prepare.ps1"
-    STOP_COMPUTER=""
-fi
-
-if test "${COMMIT_MESSAGE#*'[build32bit]'}" != "$COMMIT_MESSAGE"
-then
-    echo "building 32bit, too."
-    BUILD32BIT="\$env:BUILD32BIT=1"
-fi
-
-if test "${COMMIT_MESSAGE#*'[nofastbuild]'}" != "$COMMIT_MESSAGE"
-then
-    echo "doing a full build."
-    FASTBUILD="\$env:FASTBUILD=0"
-fi
-
-if test "${COMMIT_MESSAGE#*'[packagedebugsymbols]'}" != "$COMMIT_MESSAGE"
-then
-    echo "packaging debug symbols."
-    PACKAGEDEBUGSYMBOLS="\$env:PACKAGEDEBUGSYMBOLS=1"
-fi
-
-if test "${COMMIT_MESSAGE#*'[publish node-gdal]'}" != "$COMMIT_MESSAGE"
-then
-    echo "publishing just node-gdal."
-    PUBLISH_NODEGDAL="\$env:PUBLISH_NODEGDAL=1"
 fi
 
 sudo pip install awscli
@@ -57,21 +21,28 @@ sleep=10
 date_time=`date +%Y%m%d%H%M`
 start_timestamp=`date +"%s"`
 maxtimeout=2880
+######first 2015 ami
+#region="eu-central-1"
+#ami_id="ami-a4181cb9"
+#security_groups=""
+######first 2015 ami
+#region="us-west-2"
+#ami_id="ami-3d232a0d"
+#security_groups="--security-groups windows-builds"
+######2015 ami with updated EC2Config
 region="eu-central-1"
-ami_id="ami-3690a22b"
+ami_id="ami-1c828601"
+security_groups=""
+
 
 user_data="<powershell>
     ([ADSI]\"WinNT://./Administrator\").SetPassword(\"${CRED}\");
-    ${BUILD32BIT}
-    ${FASTBUILD}
-    ${PACKAGEDEBUGSYMBOLS}
-    ${PUBLISH_NODEGDAL}
-    \$env:PUBLISHMAPNIKSDK=${PUBLISH_SDK};
+    \$env:CRED=\"${CRED}\";
     \$env:AWS_ACCESS_KEY_ID=\"${PUBLISH_KEY}\";
     \$env:AWS_SECRET_ACCESS_KEY=\"${PUBLISH_ACCESS}\";
-    Invoke-WebRequest https://mapbox.s3.amazonaws.com/windows-builds/windows-build-server/${BUILD_CMD} -OutFile Z:\\${BUILD_CMD};
-    & Z:\\${BUILD_CMD}
-    ${STOP_COMPUTER}
+    Invoke-WebRequest https://raw.githubusercontent.com/mapbox/windows-builds/master/scripts/${BUILD_CMD} -OutFile Z:\\${BUILD_CMD};
+    & Z:\\${BUILD_CMD} \"${COMMIT_MESSAGE}\" \"${gitsha}\"
+    Write-Host \"exiting userdata\"
     </powershell>
     <persist>true</persist>"
 
@@ -81,6 +52,7 @@ id=$(aws ec2 run-instances \
     --image-id $ami_id \
     --count 1 \
     --instance-type c3.4xlarge \
+    $security_groups \
     --user-data "$user_data" | jq -r '.Instances[0].InstanceId')
 
 echo "Created instance: $id"
@@ -98,7 +70,7 @@ until [ "$instance_status_stopped" = "stopped" ]; do
     fi
 
     instance_status_stopped=$(aws ec2 describe-instances --region $region --instance-id $id | jq -r '.Reservations[0].Instances[0].State.Name')
-    echo "Instance stopping status eu-central-1 $id: $instance_status_stopped"
+    echo "Instance stopping status $region $id: $instance_status_stopped"
 
     if [[ -z $dns ]]; then
         dns=$(aws ec2 describe-instances --instance-ids $id --region $region --query "Reservations[0].Instances[0].PublicDnsName")

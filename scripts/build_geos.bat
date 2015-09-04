@@ -1,25 +1,26 @@
 echo off
 SETLOCAL
 SET EL=0
-echo ------ geos -----
+ECHO ~~~~~~~~~~~~~~~~~~~ %~f0 ~~~~~~~~~~~~~~~~~~~
 
 cd %PKGDIR%
 
 
-SETLOCAL ENABLEDELAYEDEXPANSION
-if NOT EXIST geos (
-	echo cloning from github
-	git clone https://github.com/jehc/geos.git
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-	cd %PKGDIR%\geos
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-	echo patching
-	patch -N -p1 < %PATCHES%/geos.diff || %SKIP_FAILED_PATCH%
-	IF !ERRORLEVEL! NEQ 0 GOTO ERROR
-)
-ENDLOCAL
+if EXIST geos ECHO src found && GOTO SRC_ALREADY_HERE
 
-echo fetching/pulling from github
+ECHO cloning from github
+git clone https://github.com/jehc/geos.git
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+CD %PKGDIR%\geos
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+ECHO patching
+patch -N -p1 < %PATCHES%/geos.diff || %SKIP_FAILED_PATCH%
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+
+:SRC_ALREADY_HERE
+
+ECHO fetching/pulling from github
 
 cd %PKGDIR%\geos
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -69,17 +70,19 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ::call autogen.bat again. geos/platform.h somehow gets deleted by cmake or nmake
 ::but it is needed later, e.g. to build libosmium
 CD ..
-CALL autogen.bat
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+::ECHO calling autogen.bat again && CALL autogen.bat
+::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 
 GOTO DONE
 
 :ERROR
 SET EL=%ERRORLEVEL%
-echo ----------ERROR geos --------------
+ECHO ~~~~~~~~~~~~~~~~~~~ ERROR %~f0 ~~~~~~~~~~~~~~~~~~~
+ECHO ERRORLEVEL^: %EL%
 
 :DONE
+ECHO ~~~~~~~~~~~~~~~~~~~ DONE %~f0 ~~~~~~~~~~~~~~~~~~~
 
 cd %ROOTDIR%
 EXIT /b %EL%

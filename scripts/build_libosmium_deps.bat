@@ -1,7 +1,8 @@
 @echo off
 SETLOCAL
 SET EL=0
-echo ------ libosmium DEPS -----
+ECHO ~~~~~~~~~~~~~~~~~~~ %~f0 ~~~~~~~~~~~~~~~~~~~
+
 :: guard to make sure settings have been sourced
 IF "%ROOTDIR%"=="" ( echo "ROOTDIR variable not set" && GOTO DONE )
 
@@ -13,7 +14,8 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 CALL build_libpng.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-CALL build_jpeg.bat
+::CALL build_jpeg.bat
+CALL build_libjpegturbo.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 CALL build_tiff.bat
@@ -28,14 +30,14 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 CALL build_boost.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-CALL build_protobuf-%PROTOBUF_VERSION%.bat
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+::CALL build_protobuf-%PROTOBUF_VERSION%.bat
+::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 CALL build_sparsehash.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-CALL build_osmpbf.bat
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+::CALL build_osmpbf.bat
+::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 CALL build_expat.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -47,6 +49,9 @@ CALL build_proj4.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 CALL build_geos.bat
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+CALL build_sqlite.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 CALL build_gdal.bat
@@ -63,10 +68,11 @@ GOTO DONE
 
 :ERROR
 SET EL=%ERRORLEVEL%
-echo ----------ERROR libosmium DEPS --------------
+ECHO ~~~~~~~~~~~~~~~~~~~ ERROR %~f0 ~~~~~~~~~~~~~~~~~~~
+ECHO ERRORLEVEL^: %EL%
 
 :DONE
-echo ----------DONE libosmium DEPS --------------
+ECHO ~~~~~~~~~~~~~~~~~~~ DONE %~f0 ~~~~~~~~~~~~~~~~~~~
 
 cd %ROOTDIR%
 EXIT /b %EL%

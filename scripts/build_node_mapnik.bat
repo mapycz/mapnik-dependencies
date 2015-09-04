@@ -20,6 +20,8 @@ IF "%1"=="" (
 )
 
 ECHO using node %NODE_VER%
+ECHO using MAPNIKBRANCH^: %MAPNIKBRANCH%
+ECHO using NODEMAPNIKBRANCH^: %NODEMAPNIKBRANCH%
 ECHO PACKAGEDEBUGSYMBOLS %PACKAGEDEBUGSYMBOLS%
 ECHO BUNDLE_RUNTIME %BUNDLE_RUNTIME%
 ECHO RUNTIME_VERSION %RUNTIME_VERSION%
@@ -48,43 +50,9 @@ set GDAL_DATA=%MAPNIK_SDK%\share\gdal
 set PATH=%MAPNIK_SDK%\bin;%PATH%
 set PATH=%MAPNIK_SDK%\lib;%PATH%
 
-::delete node.exe from previous runs
-IF EXIST node.exe del /F node.exe
+ECHO fetching node.exe ...
+CALL %ROOTDIR%\scripts\get_node.bat
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-IF EXIST node.pdb DEL /F node.pdb
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-
-IF DEFINED PREFER_LOCAL_NODE_EXE (ECHO PREFER_LOCAL_NODE_EXE %PREFER_LOCAL_NODE_EXE%) ELSE (SET PREFER_LOCAL_NODE_EXE=0)
-IF %PREFER_LOCAL_NODE_EXE% EQU 0 GOTO USE_REMOTE_NODE
-
-::prefer local node.exe
-SET LOCAL_NODE_EXE=%PKGDIR%\node-v%NODE_VERSION%-%BUILDPLATFORM%\%BUILD_TYPE%\node.exe
-SET LOCAL_NODE_PDB=%PKGDIR%\node-v%NODE_VERSION%-%BUILDPLATFORM%\%BUILD_TYPE%\node.pdb
-IF %PREFER_LOCAL_NODE_EXE% EQU 1 IF NOT EXIST %LOCAL_NODE_EXE% ECHO local node not found && GOTO USE_REMOTE_NODE
-
-ECHO ============= using LOCAL node.exe ==========
-ECHO %LOCAL_NODE_EXE%
-ECHO %LOCAL_NODE_PDB%
-COPY %LOCAL_NODE_EXE%
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-IF EXIST %LOCAL_NODE_PDB% COPY %LOCAL_NODE_PDB%
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-
-GOTO USED_LOCAL_NODE
-
-:USE_REMOTE_NODE
-ECHO ============= using REMOTE node.exe ==========
-::download custom Mapbox node.exe
-::ALWAYS download in case there is another version of node.exe
-::here from another build
-SET ARCHPATH=
-IF "%PLATFORMX%"=="x64" SET ARCHPATH=x64/
-SET MBNODEURL=https://mapbox.s3.amazonaws.com/node-cpp11/v%NODE_VER%/%ARCHPATH%node.exe
-ECHO downloading custom node.exe %MBNODEURL%
-curl %MBNODEURL% > node.exe
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-
-:USED_LOCAL_NODE
 
 REM CALL npm cache clean
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -99,14 +67,21 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 call npm update -g node-gyp
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
+:INSTALL_NODE_MODULES
 if NOT EXIST node_modules (
     call npm install mapnik-vector-tile nan sphericalmercator mocha node-pre-gyp jshint
 )
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-call npm ls
-ECHO if this failed then clear out node_modules
+CALL npm ls
+IF %ERRORLEVEL% EQU 0 GOTO NPM_LS_OK
+
+ECHO 'npm ls' failed!!!!!! clearing out node_modules...
+ddt /q node_modules
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+GOTO INSTALL_NODE_MODULES
+
+:NPM_LS_OK
 
 call .\node_modules\.bin\node-pre-gyp clean --target=%NODE_VER%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -138,7 +113,7 @@ ECHO NODE_LOCATION %NODE_LOCATION%
 
 call .\node_modules\.bin\node-pre-gyp ^
 rebuild %DEBUG_FLAG% ^
---msvs_version=2013 ^
+--msvs_version=2015 ^
 --no-rollback ^
 --target=%NODE_VER% ^
 %NODE_LOCATION%
@@ -184,11 +159,13 @@ xcopy /Q /S /Y %MAPNIK_SDK%\share %BINDINGIDR%\share\
 IF ERRORLEVEL 1 GOTO ERROR
 xcopy /Q /Y %MAPNIK_SDK%\lib\cairo.dll %BINDINGIDR%\
 IF ERRORLEVEL 1 GOTO ERROR
-xcopy /Q /Y %MAPNIK_SDK%\lib\gdal111.dll %BINDINGIDR%\
+xcopy /Q /Y %MAPNIK_SDK%\lib\gdal%GDAL_VERSION_FILE%.dll %BINDINGIDR%\
 IF ERRORLEVEL 1 GOTO ERROR
 xcopy /Q /Y %MAPNIK_SDK%\lib\icu*.dll %BINDINGIDR%\
 IF ERRORLEVEL 1 GOTO ERROR
 xcopy /Q /Y %MAPNIK_SDK%\lib\libexpat.dll %BINDINGIDR%\
+IF ERRORLEVEL 1 GOTO ERROR
+xcopy /Q /Y %MAPNIK_SDK%\lib\jpeg62.dll %BINDINGIDR%\
 IF ERRORLEVEL 1 GOTO ERROR
 xcopy /Q /Y %MAPNIK_SDK%\lib\libpng16.dll %BINDINGIDR%\
 IF ERRORLEVEL 1 GOTO ERROR

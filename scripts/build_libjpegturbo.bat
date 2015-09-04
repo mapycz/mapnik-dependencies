@@ -36,20 +36,24 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 CD build
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-REM -G "Visual Studio 14 Win64"
-REM -G "NMake Makefiles"
-
-
-
 
 :::::::::::::: TODO
 ::https://github.com/mapnik/mapnik-packaging/blob/master/osx/scripts/build_jpeg_turbo.sh
 ::parameter --with-jpeg8
 
+::hm, somehow wrong cl.exe is found for x86 builds
+::put 32bit cl.exe at beginning of path
+::if "%TARGET_ARCH%" == "32" SET PATH=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin;%PATH%
+::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+::-G "Visual Studio 14 Win64"
+::-G "Visual Studio 14"
+
+SET GENERATOR=Visual Studio 14 Win64
+if "%TARGET_ARCH%" == "32" SET GENERATOR=Visual Studio 14
 
 ECHO calling cmake
-CALL cmake .. ^
--G "Visual Studio 14 Win64"
+CALL cmake .. -G "%GENERATOR%"
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 msbuild ^

@@ -24,16 +24,22 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 if EXIST %USERPROFILE%\.node-gyp ddt /Q %USERPROFILE%\.node-gyp
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
+ECHO downloading temporary node.exe to install deps ...
+CALL %ROOTDIR%\scripts\get_node.bat
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+ECHO installing node-pre-gyp ...
 CALL npm install node-pre-gyp
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 ::to get node-pre-gyp and other deps
 ::IS THERE A BETTER WAY TO INSTALL JUST THE DEPS????
+ECHO npm install ...
 CALL npm install
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 SETLOCAL EnableDelayedExpansion
-FOR %%N IN (0.10.33 0.11.14 0.12.0) DO (
+FOR %%N IN (0.10.40 0.12.7) DO (
 	ECHO about to build %%N %PLATFORMX%
 	CALL %ROOTDIR%\scripts\build_node_gdal-worker.bat %%N
 	ECHO ERRORLEVEL %%N %PLATFORMX% !ERRORLEVEL!

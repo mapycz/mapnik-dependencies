@@ -21,17 +21,19 @@ git fetch
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ECHO checking out mapnik/%MAPNIKBRANCH%
 git checkout %MAPNIKBRANCH%
+ECHO ERRORLEVEL^: %ERRORLEVEL%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ECHO pulling mapnik
 git pull
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+ECHO ERRORLEVEL^: %ERRORLEVEL%
+::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 git submodule update --init
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 REM patch -N -p1 < %PATCHES%\mapnik-test.exe-crash.diff || %SKIP_FAILED_PATCH%
 REM IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-patch -N -p1 < %PATCHES%\mapnik-test.exe-crash-lock_guard.diff || %SKIP_FAILED_PATCH%
+REM patch -N -p1 < %PATCHES%\mapnik-test.exe-crash-lock_guard.diff || %SKIP_FAILED_PATCH%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 if EXIST mapnik-gyp GOTO FETCHMAPNIKGYP
@@ -58,15 +60,12 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ddt /Q mapnik-sdk
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-
 ::download prebuilt binary deps
 IF %FASTBUILD% NEQ 1 GOTO FULLBUILD
 SET BINDEPSPGK=mapnik-win-sdk-binary-deps-%TOOLS_VERSION%-%PLATFORMX%.7z
-IF EXIST %BINDEPSPGK% DEL /Q %BINDEPSPGK%
+IF NOT EXIST %BINDEPSPGK% ECHO downloading binary deps package... && CALL %ROOTDIR%\scripts\download https://mapbox.s3.amazonaws.com/windows-builds/windows-build-deps/%BINDEPSPGK%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-CALL %ROOTDIR%\scripts\download %BINDEPSPGK%
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-CALL 7z x -y %BINDEPSPGK% | %windir%\system32\FIND "ing archive"
+IF NOT EXIST mapnik-sdk ECHO extracting binary deps package... && CALL 7z x -y %BINDEPSPGK% | %windir%\system32\FIND "ing archive"
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 
@@ -74,7 +73,9 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ECHO building mapnik
 if "%BOOSTADDRESSMODEL%"=="32" if EXIST %ROOTDIR%\tmp-bin\python2-x86-32 SET PATH=%ROOTDIR%\tmp-bin\python2-x86-32;%ROOTDIR%\tmp-bin\python2-x86-32\Scripts;%PATH%
 if "%BOOSTADDRESSMODEL%"=="64" if EXIST %ROOTDIR%\tmp-bin\python2 SET PATH=%ROOTDIR%\tmp-bin\python2;%ROOTDIR%\tmp-bin\python2\Scripts;%PATH%
+ECHO calling build.bat of mapnik-gyp ...
 call build.bat
+ECHO finished build.bat of mapnik-gyp
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: jump to end, ignore PUBLISHMAPNIKSDK when %PACKAGEMAPNIK% EQU 0
@@ -95,7 +96,7 @@ cd %PKGDIR%\mapnik-%MAPNIKBRANCH%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 FOR /F "tokens=*" %%i in ('git describe') do SET GITVERSION=%%i
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-SET SDK_PKG_NAME=mapnik-win-sdk-%TOOLS_VERSION%-%PLATFORMX%-%GITVERSION%.7z
+SET SDK_PKG_NAME=mapnik-win-sdk-%GITVERSION%-%PLATFORMX%-%TOOLS_VERSION%.7z
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 cd %PKGDIR%\mapnik-%MAPNIKBRANCH%\mapnik-gyp
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -109,9 +110,9 @@ GOTO DONE
 
 :ERROR
 SET EL=%ERRORLEVEL%
-echo ----------ERROR MAPNIK --------------
+ECHO ---------- ERROR windows-builds MAPNIK --------------
 
 :DONE
-
+ECHO ---------- DONE windows-builds MAPNIK --------------
 cd %ROOTDIR%
 EXIT /b %EL%
